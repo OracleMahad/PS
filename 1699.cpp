@@ -10,15 +10,14 @@ int DP[100001];
 int main(){
 
     cin >> N;
-    memset(DP,0,sizeof(DP));
     for(int i =1;i<=N;i++){
-        cin >> S[i];
+        DP[i]=i;
     }
-    DP[1]=S[1];
-    DP[2]=S[1]+S[2];
-
-    for(int i=3;i<=N;i++){
-        DP[i]=max(DP[i-2],S[i-1]+DP[i-3])+S[i];
+    
+    for(int i=5;i<=N;i++){
+        for(int j=1;j*j<=i;j++){
+            DP[i]=min(DP[i],DP[i-j*j]+1);
+        }
     }
     cout << DP[N] << endl;
 }

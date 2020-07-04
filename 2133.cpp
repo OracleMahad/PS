@@ -16,11 +16,13 @@ int main(){
     for(int i=4;i<=30;i=i+2){
         S[i]=2;
     }
-
-    
-
-    for(int i=3;i<=N;i++){
-        DP[i]=max(DP[i-2],S[i-1]+DP[i-3])+S[i];
+    DP[2]=S[2];
+    for(int i=4;i<=N;i=i+2){
+        int sum=0;
+        for(int j=2;j<=i-2;j=j+2){
+            sum=sum+DP[j]*S[i-j];
+        }
+        DP[i]=sum+S[i];
     }
     cout << DP[N] << endl;
 }
