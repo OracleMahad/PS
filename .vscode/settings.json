@@ -5,6 +5,7 @@
         "queue": "cpp",
         "algorithm": "cpp",
         "xstring": "cpp",
-        "utility": "cpp"
+        "utility": "cpp",
+        "vector": "cpp"
     }
 }
