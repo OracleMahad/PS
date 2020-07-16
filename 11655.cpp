@@ -11,25 +11,24 @@ string order;
 int main(){
     cin.tie(NULL);
     ios_base::sync_with_stdio(false);
-    while(1){
-        getline(cin,order);
-        if(order.size()==0)break;
-        int a=0, A=0, num=0, vac=0;
-        for(int i=0;i<order.size();i++){
-            if((int)order.at(i)>=97&&(int)order.at(i)<=122){
-                a++;
-            }
-            if((int)order.at(i)>=65&&(int)order.at(i)<=90){
-                A++;
-            }
-            if((int)order.at(i)>=48&&(int)order.at(i)<=57){
-                num++;
-            }
-            if((int)order.at(i)==32){
-                vac++;
-            }
+    getline(cin,order);
+    for(int i=0;i<order.size();i++){
+        if(order.at(i)>='a' && order.at(i)<='m'){
+            order[i]=(order.at(i)+13);
+
         }
-        if(a+A+num+vac==0)break;
-        cout << a <<" "<< A <<" "<< num <<" "<< vac << "\n";
+        else if(order.at(i)>='n' && order.at(i)<='z'){
+            order[i]=(order.at(i)-13);
+
+
+        }
+        else if(order.at(i)>=65 && order.at(i)<=77){
+            order[i]=(order.at(i)+13);
+
+        }
+        else if(order.at(i)>=78 && order.at(i)<=90){
+            order[i]=(order.at(i)-13);
+        }
     }
+    std::cout << order << "\n";
 }
