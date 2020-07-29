@@ -1,46 +1,42 @@
 #include <iostream>
 #include <cstdlib>
 #include <algorithm>
-#include <limits.h>
-#include <cstring>
-#include <vector>
 #include <string>
+#include <list>
 using namespace std;
 int N;
-int cursor;
-void edit(string s);
 string order;
 string str;
 
 int main(){
     cin.tie(0);
     ios_base::sync_with_stdio(false);
-
     cin >> str;
     cin >> N;
-    cursor = str.size();
+
+    list<char> edit(str.begin(),str.end());
+    list<char>::iterator cursor = edit.end();
+    auto c= edit.end();
     for(int i=0;i<N;i++){
         cin >> order;
-        edit(order);
+        if(order=="L"&&cursor!=edit.begin()){
+            cursor--;
+        }
+        if(order=="D"&&cursor!=edit.end()){
+            cursor++;
+        }
+        if(order=="B"&&cursor!=edit.begin()){
+            c=cursor;
+            c--;
+            edit.erase(c);
+        }
+        if(order=="P"){
+            char input;
+            cin >> input;
+            edit.insert(cursor,input);
+        }
     }
-    cout << str;
-}
-void edit(string s){
-    if(s=="L"&&cursor!=0){
-        cursor--;
+    for(cursor=edit.begin();cursor!=edit.end();cursor++){
+        cout << *cursor;
     }
-    if(s=="D"&&cursor<str.length()){
-        cursor++;
-    }
-    if(s=="B"&&cursor!=0){
-        str.replace(cursor-1,1,"");
-        cursor--;
-    }
-    if(s=="P"){
-        string input;
-        cin >> input;
-        str.replace(cursor,0,input);
-        cursor+=input.length();
-    }
-
 }
