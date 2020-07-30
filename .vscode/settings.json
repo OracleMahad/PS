@@ -6,6 +6,7 @@
         "algorithm": "cpp",
         "xstring": "cpp",
         "utility": "cpp",
-        "vector": "cpp"
+        "vector": "cpp",
+        "list": "cpp"
     }
 }
