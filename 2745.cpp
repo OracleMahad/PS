@@ -5,12 +5,20 @@
 #include <list>
 #include <vector>
 using namespace std;
-int main(){
-    int N,B;
-    char A[36];
-    cin >> N >> B;
-    for(int i=10;i<36;i++){
-        A[i]=i+55;
-    }
 
+int main(){
+    string N;
+    int B;
+    int result = 0;
+    int radix = 1;
+    cin >> N >> B;
+    for(int i=N.length()-1;i>=0;i--){
+        if(N[i]>=65)
+            result += (int)(N[i]-55)*radix;
+        else
+            result += (int)(N[i]-48)*radix;
+        
+        radix=radix*B;
+    }
+    cout << result;
 }
