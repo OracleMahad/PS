@@ -6,7 +6,7 @@
 #include <vector>
 #include <cmath>
 using namespace std;
-int N, M;
+long long  N, M;
 int main(){
     cin.tie(NULL);
     ios_base::sync_with_stdio(false);
@@ -16,40 +16,28 @@ int main(){
     cin >> N;
     cin >> M;
 
-    for(int i=N-M+1;i<=N;i++){
-        int I=i;
-        int count=1;
-        while(count > 0){
-            count=0;
-            if(I%2==0){
-                I/=2;
-                num2++;
-                count++;
-            }
-            if(I%5==0){
-                I/=5;
-                num5++;
-                count++;
-            }
-        }
+    for(long long i=2;i<=N;i*=2){
+        num2+=N/i;
     }
-    for(int i=2;i<=M;i++){
-        int I=i;
-        int count=1;
-        while(count > 0){
-            count=0;
-            if(I%2==0){
-                I/=2;
-                num2--;
-                count++;
-            }
-            if(I%5==0){
-                I/=5;
-                num5--;
-                count++;
-            }
-        }
+    for(long long i=5;i<=N;i*=5){
+        num5+=N/i;
     }
+
+    for(long long i=2;i<=M;i*=2){
+        num2-=M/i;
+    }
+    for(long long i=5;i<=M;i*=5){
+        num5-=M/i;
+    }
+
+    long long A = N-M;
+    for(long long i=2;i<=A;i*=2){
+        num2-=A/i;
+    }
+    for(long long i=5;i<=A;i*=5){
+        num5-=A/i;
+    }
+
     cout << min(num2,num5) <<"\n";
    
 }
