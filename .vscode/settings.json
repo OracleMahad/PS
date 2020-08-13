@@ -9,6 +9,7 @@
         "vector": "cpp",
         "list": "cpp",
         "iosfwd": "cpp",
-        "xlocale": "cpp"
+        "xlocale": "cpp",
+        "xiosbase": "cpp"
     }
 }
