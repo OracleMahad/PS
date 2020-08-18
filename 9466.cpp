@@ -8,25 +8,31 @@
 #include <cmath>
 using namespace std;
 int T, N;
-vector <int> graph[100001];
+int result;
+int graph[100001];
 int visitD[100001];
 
-//0: untracked, 2 : cycle
-int DFS_cycle(int start){
-    cout << start << " ";
+
+//0: untracked, 1 : visited , 2 : cycle , -1: not cycle
+void DFS_cycle(int start){
     visitD[start]=1;
-	vector <int>::iterator iter;
-    if(visitD[graph[start][0]]==2){
+	
+    if(visitD[graph[start]]==2||visitD[graph[start]]==-1){
         visitD[start] =-1;
-        return -1;
+        return ;
     }
-    else if(visitD[graph[start][0]]==-1){
-        visitD[start] =-1;
-        return -1;
+    else if(visitD[graph[start]]==1){
+        for(int i=graph[start];i!=start;i=graph[i]){
+            visitD[i]=2;
+            result++;
+        }
+        visitD[start] =2;
+        result++;
+        return ;
     }
-    DFS_cycle(graph[start][0]);
-    return;
-    return ;
+    DFS_cycle(graph[start]);
+    if(visitD[start]==1)
+        visitD[start]=-1;
 }
 
 int main(){
@@ -35,20 +41,20 @@ int main(){
 	cin >> T;
 	for(int i=0;i<T;i++){
 		memset(visitD,0,sizeof(visitD));
-		for(int j=1;j<=100001;j++){
-			graph[i].clear();
-		}
+		memset(graph,0,sizeof(graph));
+		result=0;
 		cin >> N;
-		for(int i=1;i<=N;i++){
-			int input;
-			cin >> input ;
-			graph[i].push_back(input);
-		}
-		for(int i=1;i<=N;i++){
 
-			DFS_cycle(i);
+		for(int i=1;i<=N;i++){
+			cin >> graph[i] ;
 		}
 
-		cout <<"\n";
+		for(int i=1;i<=N;i++){
+            if(visitD[i]==0){
+                DFS_cycle(i);
+            }
+		}
+
+		cout << N-result <<"\n";
 	}
 }
