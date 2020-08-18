@@ -7,57 +7,48 @@
 #include <queue>
 #include <cmath>
 using namespace std;
-int N, M, V;
-int mat[1001][1001];
-int visitD[1001];
-int visitB[1001];
+int T, N;
+vector <int> graph[100001];
+int visitD[100001];
 
-void DFS(int start){
+//0: untracked, 2 : cycle
+int DFS_cycle(int start){
     cout << start << " ";
     visitD[start]=1;
-    for(int i =1;i<=N;i++){
-        if(mat[start][i]==1 && visitD[i]==0){
-            DFS(i);
-        }
+	vector <int>::iterator iter;
+    if(visitD[graph[start][0]]==2){
+        visitD[start] =-1;
+        return -1;
     }
-}
-
-void BFS(int start){
-    queue <int> Q;
-    Q.push(start);
-    visitB[start]=1;
-    while(!Q.empty()){
-        int v=Q.front();
-        cout << v <<" ";
-        Q.pop();
-        for(int i =1;i<=N;i++){
-            if(mat[v][i]==1 && visitB[i]==0){
-                Q.push(i);
-                visitB[i]=1;
-            }
-        }
+    else if(visitD[graph[start][0]]==-1){
+        visitD[start] =-1;
+        return -1;
     }
+    DFS_cycle(graph[start][0]);
+    return;
+    return ;
 }
 
 int main(){
     cin.tie(NULL);
     ios_base::sync_with_stdio(false);
-    memset(mat,0,sizeof(mat));
-    memset(visitD,0,sizeof(visitD));
-    memset(visitB,0,sizeof(visitB));
+	cin >> T;
+	for(int i=0;i<T;i++){
+		memset(visitD,0,sizeof(visitD));
+		for(int j=1;j<=100001;j++){
+			graph[i].clear();
+		}
+		cin >> N;
+		for(int i=1;i<=N;i++){
+			int input;
+			cin >> input ;
+			graph[i].push_back(input);
+		}
+		for(int i=1;i<=N;i++){
 
-    cin >> N;
-    cin >> M;
-    cin >> V;
-    for(int i=0;i<M;i++){
-        int x, y;
-        cin >> x >> y;
-        mat[x][y]=1;
-        mat[y][x]=1;
-    }
+			DFS_cycle(i);
+		}
 
-    DFS(V);
-    cout <<"\n";
-    BFS(V);
-    cout <<"\n";
+		cout <<"\n";
+	}
 }

@@ -16,11 +16,7 @@ int DFS_cycle(int start){
     cout << start << " ";
     visitD[start]=1;
 	vector <int>::iterator iter;
-	
-    for(int i =1;i<=N;i++){
-        
-		
-    }
+    visit
 }
 
 int main(){
