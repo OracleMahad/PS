@@ -41,3 +41,6 @@ int main(){
     cout << min(num2,num5) <<"\n";
    
 }
+
+
+

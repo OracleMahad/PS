@@ -10,6 +10,7 @@
         "list": "cpp",
         "iosfwd": "cpp",
         "xlocale": "cpp",
-        "xiosbase": "cpp"
+        "xiosbase": "cpp",
+        "istream": "cpp"
     }
 }
