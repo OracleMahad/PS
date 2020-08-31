@@ -5,11 +5,11 @@
 #include <vector>
 
 using namespace std;
-int V;
-vector <pair <int ,int>> tree[100001];
-int visit[100001];
+int n;
+vector <pair <int ,int>> tree[10002];
+int visit[10002];
 int max_len=0;
-int y, z;
+int y;
 void DFS(int start, int len){
     visit[start]=1;
     vector <pair <int ,int>>::iterator iter;
@@ -30,18 +30,14 @@ int main(){
     cin.tie(NULL);
     ios_base::sync_with_stdio(false);
 
-    cin >> V;
+    cin >> n;
 
-    for(int i=1;i<=V;i++){
+    for(int i=1;i<n;i++){
         int a, b, c;
-        cin >> a;
-        while(1){
-            cin >> b;
-            if(b==-1)break;
-            cin >> c;
-            tree[a].push_back(make_pair(b,c));
-            // tree[b].push_back(make_pair(a,c));
-        }
+        cin >> a >> b >> c;
+        tree[a].push_back(make_pair(b,c));
+        tree[b].push_back(make_pair(a,c));
+        
     }
     memset(visit,0,sizeof(visit));
     DFS(1,0);
