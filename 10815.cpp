@@ -6,44 +6,49 @@
 #include <climits>
 
 using namespace std;
-int N, C;
-int house[200000];
-int max_len;
-int get_len(){
-    long long left=1;
-    long long right =100000000;
-    while(left <= right){
-        long long mid=(left+right)/2;
-        int low_index = 0;
-        int num = 1;
-        for(int i=1;i<N;i++){
-            if(mid<=(house[i]-house[low_index])){
-                num++;
-                low_index=i;
-            }
-        }
+int N, M;
+int cardN[500000];
+int cardM[500000];
+int visit[];
 
-        if(C<=num){
-            left=mid+1;
-            max_len=mid;
-        }
-        else{
+int findM(int x){
+    int own=0;
+    int left=0;
+    int right=N-1;
+    while(left <= right){
+        int mid=(left+right)/2;
+        if(x<cardN[mid]){
             right=mid-1;
         }
+        else if(x==cardN[mid]){
+            own=1;
+            break;
+        }
+        else{
+            left=mid+1;
+        }
     }
-    return max_len;
+    return own;
 }
+
 int main(){
     cin.tie(NULL);
     ios_base::sync_with_stdio(false);
 
-    cin >> N >> C;
-
+    cin >> N;
     for(int i=0;i<N;i++){
-        cin >> house[i];
+        cin >> cardN[i];
     }
-    sort(house, house+N);
+    sort(cardN,cardN+N);
+    cin >> M;
+    for(int i=0;i<M;i++){
+        cin >> cardM[i];
+        cout << findM(cardM[i]) << " ";
+    }
 
-    cout << get_len() << "\n";
-
+    for(int i=0;i<M;i++){
+        cin >> cardM[i];
+        cout << findM(cardM[i]) << " ";
+    }
+    
 }
