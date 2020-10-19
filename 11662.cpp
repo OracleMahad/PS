@@ -6,8 +6,7 @@
 #include <climits>
 
 using namespace std;
-int Ax, Ay, Bx, By, Cx, Cy, Dx, Dy;
-int card[20000002];
+double Ax, Ay, Bx, By, Cx, Cy, Dx, Dy;
 
 double get_distance(int x1, int y1, int x2, int y2){
     return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
@@ -20,8 +19,10 @@ int main(){
     
     cin >> Ax >> Ay >> Bx >> By >>  Cx >>  Cy >>  Dx >> Dy;
 
-    
+    double low, high; 
+    while(){
 
+    }
 
     
 }
