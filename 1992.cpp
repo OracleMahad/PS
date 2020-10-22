@@ -7,12 +7,10 @@
 
 using namespace std;
 int N;
-int mat[2200][2200];
-int num0 = 0;
-int num1 = 0;
-int numm1 = 0;
-void divide_mat(int idx, int idy, int num){
-    int x = mat[idy][idx];
+char mat[70][70];
+
+void quadTree(int idx, int idy, int num){
+    char x = mat[idy][idx];
     int count = 0;
     for(int i = idx ; i < idx + num ; i++){
         for(int j = idy ; j < idy + num; j++){
@@ -21,15 +19,15 @@ void divide_mat(int idx, int idy, int num){
     }
 
     if(count == 0){
-        if(x==0) num0++;
-        else if(x==1) num1++;
-        else numm1++;
-    } else if(num/3){
-        for(int i = idx ; i < idx + num ; i = i + num/3){
-            for(int j = idy ; j < idy + num; j = j + num/3){
-                divide_mat(i , j , num/3);
+        cout << x;
+    } else if(num/2){
+        cout << "(";
+        for(int i = idx ; i < idx + num ; i = i + num/2){
+            for(int j = idy ; j < idy + num; j = j + num/2){
+                quadTree(i , j , num/2);
             }
         }
+        cout << ")";
     }
 }
 
@@ -42,7 +40,5 @@ int main(){
             cin >> mat[j][i];
         }
     }
-    divide_mat( 1, 1, N);
-
-    cout << numm1 << "\n" << num0 << "\n" << num1 <<"\n";
+    quadTree( 1, 1, N);
 }
