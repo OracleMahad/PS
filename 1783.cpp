@@ -2,8 +2,6 @@
 #include <cstdlib>
 #include <algorithm>
 #include <cstring>
-#include <string>
-
 using namespace std;
 
 int main(){
@@ -13,14 +11,12 @@ int main(){
     cin >> N >> M;
     if(N==1){
         cout << 1; 
-    } else if(N){
-
-    } else if(){
-
+    } else if(N==2){
+        cout << min((M+1)/2,4);
+    } else if(M<7){
+        cout << min(M,4);
     }else {
-        /* code */
+        cout << M-2;
     }
     
-    
-        
 }
