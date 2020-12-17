@@ -32,6 +32,26 @@ void dump_directory();
 static struct sfs_super spb;	// superblock
 static struct sfs_dir sd_cwd = { SFS_NOINO }; // current working directory
 
+u_int32_t empty_block(){
+	int i, j, k;
+	int inode = 0;
+	u_int8_t bitmap[512];
+	u_int32_t  bitblock = SFS_BITBLOCKS(spb.sp_nblocks);
+	for(i=0;i<bitblock;i++){
+		disk_read( bitmap, SFS_MAP_LOCATION + i );
+		for(j = 0; j < 512; j++){
+			for(k = 0;k < 8;k++){
+				if(!BIT_CHECK(bitmap[j],k)){
+					BIT_SET(bitmap[j],k);
+					disk_write( bitmap, SFS_MAP_LOCATION + i );
+					return SFS_BLOCKSIZE * 8 * i +  j * 8 + k ;
+				}
+			}
+		}
+	}
+	return -1; //full
+}
+
 void error_message(const char *message, const char *path, int error_code) {
 	switch (error_code) {
 	case -1:
@@ -103,38 +123,76 @@ void sfs_umount() {
 
 void sfs_touch(const char* path)
 {
-	//skeleton implementation
+	int i, j;
+
 
 	struct sfs_inode si;
 	disk_read( &si, sd_cwd.sfd_ino );
-
 	//for consistency
 	assert( si.sfi_type == SFS_TYPE_DIR );
 
-	//we assume that cwd is the root directory and root directory is empty which has . and .. only
-	//unused DISK2.img satisfy these assumption
-	//for new directory entry(for new file), we use cwd.sfi_direct[0] and offset 2
-	//becasue cwd.sfi_directory[0] is already allocated, by .(offset 0) and ..(offset 1)
-	//for new inode, we use block 6 
-	// block 0: superblock,	block 1:root, 	block 2:bitmap 
-	// block 3:bitmap,  	block 4:bitmap 	block 5:root.sfi_direct[0] 	block 6:unused
-	//
-	//if used DISK2.img is used, result is not defined
-	
 	//buffer for disk read
 	struct sfs_dir sd[SFS_DENTRYPERBLOCK];
-
 	//block access
-	disk_read( sd, si.sfi_direct[0] );
+
+	/********check exists********/
+	if(path == NULL){
+		return;
+	} else {
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) break;
+			disk_read( sd, si.sfi_direct[i] );
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(sd[j].sfd_ino==0) continue;
+				if(!strcmp(sd[j].sfd_name, path)){//Already exists
+					error_message("touch",path,-6);
+					return;
+				}
+			}
+		}
+	}
+
 
 	//allocate new block
-	int newbie_ino = 6;
+	int newbie_ino = empty_block();
+	if(newbie_ino==-1){
+		error_message("touch",path,-4);//no block
+		return;
+	}
 
-	sd[2].sfd_ino = newbie_ino;
-	strncpy( sd[2].sfd_name, path, SFS_NAMELEN );
 
-	disk_write( sd, si.sfi_direct[0] );
+	/********allocate********/
+	if(path == NULL){
+		return;
+	} else {
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) {// dir allocate
+				int newdir_ino = empty_block();
+				if(newdir_ino==-1){
+					error_message("touch",path,-4);//no block
+					//free newbie_ino
+					return;
+				}
+				si.sfi_direct[i] = newdir_ino;
+				struct sfs_inode newdir;
+				bzero(&newdir,SFS_BLOCKSIZE);
+				disk_write( &newdir, si.sfi_direct[i] );
+			}
+			disk_read( sd, si.sfi_direct[i] );
 
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(sd[j].sfd_ino==0){
+					sd[j].sfd_ino = newbie_ino;
+					strncpy( sd[j].sfd_name, path, SFS_NAMELEN );
+					disk_write( sd, si.sfi_direct[i] );
+					goto end_alc;
+				}
+			}
+		}
+		error_message("touch", path, -3);
+	}
+	end_alc:
 	si.sfi_size += sizeof(struct sfs_dir);
 	disk_write( &si, sd_cwd.sfd_ino );
 
@@ -145,11 +203,14 @@ void sfs_touch(const char* path)
 	newbie.sfi_type = SFS_TYPE_FILE;
 
 	disk_write( &newbie, newbie_ino );
+
 }
+
+
 
 void sfs_cd(const char* path)
 {
-	int i, count;
+	int i, j, count;
 	u_int32_t answer = 1;
 	char sfd_name_goal[SFS_NAMELEN];
 	struct sfs_dir dir_entry[SFS_DENTRYPERBLOCK];
@@ -164,10 +225,10 @@ void sfs_cd(const char* path)
 			if (inode.sfi_direct[i] == 0) break;
 			disk_read(dir_entry, inode.sfi_direct[i]);
 
-			for(i=0; i < SFS_DENTRYPERBLOCK;i++) {
-				if(!strcmp(dir_entry[i].sfd_name, path)){
-					answer = dir_entry[i].sfd_ino;
-					strcpy(sfd_name_goal, dir_entry[i].sfd_name);
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(!strcmp(dir_entry[j].sfd_name, path)){
+					answer = dir_entry[j].sfd_ino;
+					strcpy(sfd_name_goal, dir_entry[j].sfd_name);
 					count++;
 				}
 			}
@@ -190,7 +251,7 @@ void sfs_cd(const char* path)
 
 void sfs_ls(const char* path)
 {
-	int i, count;
+	int i, j, count;
 	u_int32_t answer = 1;
 	struct sfs_dir dir_entry[SFS_DENTRYPERBLOCK];
 	struct sfs_inode inode;
@@ -204,9 +265,9 @@ void sfs_ls(const char* path)
 			if (inode.sfi_direct[i] == 0) break;
 			disk_read(dir_entry, inode.sfi_direct[i]);
 
-			for(i=0; i < SFS_DENTRYPERBLOCK;i++) {
-				if(!strcmp(dir_entry[i].sfd_name, path)){
-					answer = dir_entry[i].sfd_ino;
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(!strcmp(dir_entry[j].sfd_name, path)){
+					answer = dir_entry[j].sfd_ino;
 					count++;
 				}
 			}
@@ -216,7 +277,7 @@ void sfs_ls(const char* path)
 			return;
 		}
 	}
-	//파일 어떻게 처리할지??
+
 	struct sfs_inode inode_goal;
 	struct sfs_dir dir_entry_goal[SFS_DENTRYPERBLOCK];
 	disk_read(&inode_goal, answer);
@@ -228,10 +289,10 @@ void sfs_ls(const char* path)
 			disk_read(dir_entry_goal, inode_goal.sfi_direct[i]);
 
 			struct sfs_inode inode2;
-			for(i=0; i < SFS_DENTRYPERBLOCK;i++) {
-				if(dir_entry_goal[i].sfd_ino==0) continue;
-				printf("%s", dir_entry_goal[i].sfd_name);
-				disk_read(&inode2,dir_entry_goal[i].sfd_ino);
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(dir_entry_goal[j].sfd_ino==0) continue;
+				printf("%s", dir_entry_goal[j].sfd_name);
+				disk_read(&inode2,dir_entry_goal[j].sfd_ino);
 				if (inode2.sfi_type == SFS_TYPE_DIR) {
 					printf("/\t");
 				} else {
@@ -249,6 +310,8 @@ void sfs_ls(const char* path)
 
 void sfs_mkdir(const char* org_path) 
 {
+	printf("%u\n",empty_block());
+	
 	printf("Not Implemented\n");
 }
 
