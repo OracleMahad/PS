@@ -52,6 +52,21 @@ u_int32_t empty_block(){
 	return -1; //full
 }
 
+void free_block(u_int32_t index){
+	int i, j, k;
+	u_int8_t bitmap[512];
+
+	k = index % 8;
+	j = (index/8) % SFS_BLOCKSIZE;
+	i = (index/8) / SFS_BLOCKSIZE;
+
+	disk_read( bitmap, SFS_MAP_LOCATION + i );
+	BIT_CLEAR(bitmap[j],k);
+	disk_write( bitmap, SFS_MAP_LOCATION + i );
+
+}
+	
+
 void error_message(const char *message, const char *path, int error_code) {
 	switch (error_code) {
 	case -1:
@@ -166,16 +181,21 @@ void sfs_touch(const char* path)
 	if(path == NULL){
 		return;
 	} else {
+			if((si.sfi_size)/64 >= SFS_DENTRYPERBLOCK * SFS_NDIRECT){
+			error_message("touch", path, -3);
+			free_block(newbie_ino);
+			return;
+		}
 		for(i=0; i < SFS_NDIRECT; i++) {
 			if (si.sfi_direct[i] == 0) {// dir allocate
 				int newdir_ino = empty_block();
 				if(newdir_ino==-1){
 					error_message("touch",path,-4);//no block
-					//free newbie_ino
+					free_block(newbie_ino);
 					return;
 				}
 				si.sfi_direct[i] = newdir_ino;
-				struct sfs_inode newdir;
+				struct sfs_dir newdir[SFS_DENTRYPERBLOCK];
 				bzero(&newdir,SFS_BLOCKSIZE);
 				disk_write( &newdir, si.sfi_direct[i] );
 			}
@@ -190,7 +210,7 @@ void sfs_touch(const char* path)
 				}
 			}
 		}
-		error_message("touch", path, -3);
+		// error_message("touch", path, -3);
 	}
 	end_alc:
 	si.sfi_size += sizeof(struct sfs_dir);
@@ -310,34 +330,296 @@ void sfs_ls(const char* path)
 
 void sfs_mkdir(const char* org_path) 
 {
-	printf("%u\n",empty_block());
+	int i, j;
+
+	struct sfs_inode si;
+	disk_read( &si, sd_cwd.sfd_ino );
+	//for consistency
+	assert( si.sfi_type == SFS_TYPE_DIR );
+
+	//buffer for disk read
+	struct sfs_dir sd[SFS_DENTRYPERBLOCK];
+	//block access
+
+	/********check exists********/
+	if(org_path == NULL){
+		return;
+	} else {
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) break;
+			disk_read( sd, si.sfi_direct[i] );
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(sd[j].sfd_ino==0) continue;
+				if(!strcmp(sd[j].sfd_name, org_path)){//Already exists
+					error_message("mkdir",org_path,-6);
+					return;
+				}
+			}
+		}
+	}
+
+
+	//allocate new block
+	int newbie_ino = empty_block();
+	if(newbie_ino==-1){
+		error_message("mkdir",org_path,-4);//no block
+		return;
+	}
+
+	int newdir_ino;
+	int alcdir_blk;
+
+	/********allocate********/
+	if(org_path == NULL){
+		return;
+	} else {
+		if((si.sfi_size)/64 >= SFS_DENTRYPERBLOCK * SFS_NDIRECT){// check dir full
+			error_message("mkdir", org_path, -3);
+			free_block(newbie_ino);
+			return;
+		}
+
+		alcdir_blk = empty_block();
+		if(alcdir_blk==-1){
+			error_message("mkdir",org_path,-4);//no block
+			free_block(newbie_ino);
+			return;
+		}
+
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) {// dir allocate
+				newdir_ino = empty_block();
+				if(newdir_ino==-1){
+					error_message("mkdir",org_path,-4);//no block
+					free_block(newbie_ino);
+					free_block(alcdir_blk);
+					return;
+				}
+				si.sfi_direct[i] = newdir_ino;
+				struct sfs_dir newdir[SFS_DENTRYPERBLOCK];
+				bzero(&newdir,SFS_BLOCKSIZE);
+				disk_write( &newdir, si.sfi_direct[i] );
+			}
+			disk_read( sd, si.sfi_direct[i] );
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(sd[j].sfd_ino==0){
+					sd[j].sfd_ino = newbie_ino;
+					strncpy( sd[j].sfd_name, org_path, SFS_NAMELEN );
+					disk_write( sd, si.sfi_direct[i] );
+					goto end_alc;
+				}
+			}
+		}
+		// error_message("mkdir", org_path, -3);
+	}
+	end_alc:
+	si.sfi_size += sizeof(struct sfs_dir);
+	disk_write( &si, sd_cwd.sfd_ino );
+
+	struct sfs_inode newbie;
+
+	bzero(&newbie,SFS_BLOCKSIZE); // initalize sfi_direct[] and sfi_indirect
+	newbie.sfi_size = 128;
+	newbie.sfi_type = SFS_TYPE_DIR;
+	newbie.sfi_direct[0] = alcdir_blk;
+
+	struct sfs_dir alcdir[SFS_DENTRYPERBLOCK];
+	bzero(&alcdir,SFS_BLOCKSIZE);
+	alcdir[0].sfd_ino = newbie_ino;
+	strncpy( alcdir[0].sfd_name, ".", SFS_NAMELEN );
+	alcdir[1].sfd_ino = sd_cwd.sfd_ino;
+	strncpy( alcdir[1].sfd_name, "..", SFS_NAMELEN );
 	
-	printf("Not Implemented\n");
+	disk_write( &alcdir, alcdir_blk);
+
+	disk_write( &newbie, newbie_ino );
+	
+	// printf("Not Implemented\n");
 }
 
 void sfs_rmdir(const char* org_path) 
-{
-	printf("Not Implemented\n");
+{	
+	if(!strcmp(".", org_path)){
+		error_message("rmdir",org_path, -8);//Invalid argument
+		return;
+	}
+	
+	int i, j, k;
+	struct sfs_inode si;
+	disk_read( &si, sd_cwd.sfd_ino );
+	//for consistency
+	assert( si.sfi_type == SFS_TYPE_DIR );
+
+	//buffer for disk read
+	struct sfs_dir sd[SFS_DENTRYPERBLOCK];
+
+	if(org_path == NULL){
+		return;
+	} else {
+		int count = 0;
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) break;
+			disk_read(sd, si.sfi_direct[i]);
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(!strcmp(sd[j].sfd_name, org_path)){
+					struct sfs_inode rminode;
+
+					disk_read(&rminode, sd[j].sfd_ino);
+					if(rminode.sfi_type == SFS_TYPE_FILE){
+						error_message("rmdir", org_path, -5);//Not a directory
+						return;
+					}
+					if(rminode.sfi_size>128){
+						error_message("rmdir", org_path, -7);//Directory not empty
+						return;
+					}
+
+
+					for(k=0; k < SFS_NDIRECT; k++) {
+						if (rminode.sfi_direct[k] == 0) break;
+						free_block(rminode.sfi_direct[k]);
+					}
+					free_block(sd[j].sfd_ino);
+					sd[j].sfd_ino = 0;
+					si.sfi_size -= sizeof(struct sfs_dir);
+					
+					disk_write(sd, si.sfi_direct[i]);
+							
+					count++;
+				}
+			}
+		}
+		if(count == 0) {
+			error_message("rmdir",org_path, -1);//No such file or directory
+			return;
+		}
+		disk_write( &si, sd_cwd.sfd_ino );
+	}
+	// printf("Not Implemented\n");
 }
 
 void sfs_mv(const char* src_name, const char* dst_name) 
 {
-	printf("Not Implemented\n");
+	int i, j;
+
+
+	struct sfs_inode si;
+	disk_read( &si, sd_cwd.sfd_ino );
+	//for consistency
+	assert( si.sfi_type == SFS_TYPE_DIR );
+
+	//buffer for disk read
+	struct sfs_dir sd[SFS_DENTRYPERBLOCK];
+	//block access
+
+	/********check exists dst********/
+	if(dst_name == NULL){
+		return;
+	} else {
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) break;
+			disk_read( sd, si.sfi_direct[i] );
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(sd[j].sfd_ino==0) continue;
+				if(!strcmp(sd[j].sfd_name, dst_name)){//Already exists
+					error_message("mv",dst_name,-6);
+					return;
+				}
+			}
+		}
+	}
+
+	if(src_name == NULL){//rename
+		return;
+	} else {
+		int count = 0;
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) break;
+			disk_read(sd, si.sfi_direct[i]);
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(!strcmp(sd[j].sfd_name, src_name)){
+					strcpy(sd[j].sfd_name, dst_name);
+					disk_write(sd, si.sfi_direct[i]);
+					count++;
+				}
+			}
+		}
+		if(count == 0) {
+			error_message("mv",src_name, -1);
+			return;
+		}
+	}
+
+
 }
 
 void sfs_rm(const char* path) 
-{
-	printf("Not Implemented\n");
+{	
+	int i, j, k;
+	struct sfs_inode si;
+	disk_read( &si, sd_cwd.sfd_ino );
+	//for consistency
+	assert( si.sfi_type == SFS_TYPE_DIR );
+
+	//buffer for disk read
+	struct sfs_dir sd[SFS_DENTRYPERBLOCK];
+
+	if(path == NULL){
+		return;
+	} else {
+		int count = 0;
+		for(i=0; i < SFS_NDIRECT; i++) {
+			if (si.sfi_direct[i] == 0) break;
+			disk_read(sd, si.sfi_direct[i]);
+
+			for(j=0; j < SFS_DENTRYPERBLOCK;j++) {
+				if(!strcmp(sd[j].sfd_name, path)){
+					struct sfs_inode rminode;
+
+					disk_read(&rminode, sd[j].sfd_ino);
+					if(rminode.sfi_type == SFS_TYPE_DIR){
+						error_message("rm", path, -9);//Is a directory
+						return;
+					}
+
+					for(k=0; k < SFS_NDIRECT; k++) {
+						if (rminode.sfi_direct[k] == 0) break;
+						free_block(rminode.sfi_direct[k]);
+					}
+					//del indirect
+					free_block(sd[j].sfd_ino);
+					sd[j].sfd_ino = 0;
+					si.sfi_size -= sizeof(struct sfs_dir);////indirect랑 사이즈 고려해야함
+					
+					disk_write(sd, si.sfi_direct[i]);
+					
+							
+					count++;
+				}
+			}
+		}
+		if(count == 0) {
+			error_message("rm",path, -1);//No such file or directory
+			return;
+		}
+		disk_write( &si, sd_cwd.sfd_ino );
+	}
+	// printf("Not Implemented\n");
 }
 
 void sfs_cpin(const char* local_path, const char* path) 
 {
-	printf("Not Implemented\n");
+	// printf("Not Implemented\n");
 }
 
 void sfs_cpout(const char* local_path, const char* path) 
 {
-	printf("Not Implemented\n");
+	// printf("Not Implemented\n");
 }
 
 void dump_inode(struct sfs_inode inode) {
